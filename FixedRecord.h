@@ -14,8 +14,6 @@ public:
     StudentA readRecord(int position) override;
     bool deleteRecord(int position) override;
     ~FixedRecord() override = default;
-    /*istream& operator>>(istream& in, StudentA& record) override;
-    ostream& operator<<(ostream& out, StudentA& record) override;*/
 private:
     type mode;
     string filename;
@@ -25,10 +23,8 @@ inline istream &operator>>(istream &in, StudentA &record) {
     in.read(reinterpret_cast<char*>(&record), sizeof(StudentA));
     return in;
 }
-
 inline ostream &operator<<(ostream &out, const StudentA &record) {
     out.write(reinterpret_cast<const char*>(&record), sizeof(StudentA));
-    out << endl << flush;
     return out;
 }
 
@@ -45,6 +41,7 @@ inline vector<StudentA> FixedRecord::loadRecords() {
         return records;
     }
     StudentA student{};
+    file.seekg(sizeof(int), ios::beg);
     while (file >> student) {
         records.push_back(student);
     }
@@ -52,14 +49,28 @@ inline vector<StudentA> FixedRecord::loadRecords() {
 }
 
 inline void FixedRecord::addRecord(StudentA record) {
-    ifstream file(this->filename, ios::app | ios::binary);
-    if (!file.is_open()) {
-        cerr << "File " << this->filename << " could not be opened" << endl;
+    ifstream readFile(this->filename, ios::in | ios::binary);
+    if (!readFile.is_open()) {
+        ofstream writeFile(this->filename, ios::out | ios::binary);
+        int size = 1;
+        writeFile.write(reinterpret_cast<const char*>(&size), sizeof(int));
+        writeFile << record;
+        writeFile.close();
+        cout << size << " records written" << endl;
+    } else {
+        int size;
+        readFile.read(reinterpret_cast<char*>(&size), sizeof(int));
+        size += 1;
+        readFile.close();
+
+        ofstream writeFile(this->filename, ios::out | ios::in | ios::binary);
+        writeFile.seekp(0, ios::beg);
+        writeFile.write(reinterpret_cast<const char*>(&size), sizeof(int));
+        writeFile.seekp(0, ios::end);
+        writeFile << record;
+        writeFile.close();
+        cout << size << " records written" << endl;
     }
-    file.seekg(0, ios::end);
-    file >> record;
-    file.close();
-    cout << "Record successfully added" << endl;
 }
 
 inline StudentA FixedRecord::readRecord(const int position) {
@@ -78,12 +89,12 @@ inline bool FixedRecord::deleteRecord(const int position) {
     // MOVE_THE_LAST
     StudentA record{};
     ofstream file(this->filename, ios::ate | ios::binary);
-    file.seekg(-sizeof(StudentA),ios::end);
-    file.put
+    /*file.seekg(-sizeof(StudentA),ios::end);
     file >> record;
     file.seekg(position, ios::beg);
     file << record;
     file.close();
+    return true;*/
     return true;
 }
 #endif //FIXEDRECORD_H
