@@ -41,9 +41,13 @@ inline vector<StudentA> FixedRecord::loadRecords() {
         return records;
     }
     StudentA student{};
+    int size;
+    file.read(reinterpret_cast<char*>(&size), sizeof(size));
     file.seekg(sizeof(int), ios::beg);
-    while (file >> student) {
+    int i = 0;
+    while (file >> student && i < size) {
         records.push_back(student);
+        ++i;
     }
     return records;
 }
@@ -76,25 +80,36 @@ inline void FixedRecord::addRecord(StudentA record) {
 inline StudentA FixedRecord::readRecord(const int position) {
     StudentA record{};
     ifstream file(this->filename, ios::binary);
-    if (!file.is_open()) {
-        cerr << "File " << this->filename << " could not be opened" << endl;
-    }
-    file.seekg(position, ios::beg);
+    if (!file.is_open()) cerr << "File " << this->filename << " could not be opened" << endl;
+    file.seekg(0, ios::beg);
+    file.seekg((sizeof(StudentA) * position) + sizeof(int));
     file >> record;
     file.close();
     return record;
 }
 
 inline bool FixedRecord::deleteRecord(const int position) {
-    // MOVE_THE_LAST
-    StudentA record{};
-    ofstream file(this->filename, ios::ate | ios::binary);
-    /*file.seekg(-sizeof(StudentA),ios::end);
-    file >> record;
-    file.seekg(position, ios::beg);
-    file << record;
-    file.close();
-    return true;*/
+    ifstream readFile(this->filename, ios::binary);
+    if (mode == MOVE_THE_LAST) {
+        StudentA record{};
+        int size;
+        readFile.seekg(0, ios::end); // final
+        readFile >> record; // llenamos los valores
+        readFile.seekg(0, ios::beg);
+        readFile.read(reinterpret_cast<char*>(&size), sizeof(int));
+        size -= 1;
+        readFile.close();
+        ofstream writeFile(this->filename, ios::out | ios::in | ios::binary);
+        writeFile.seekp(0, ios::beg);
+        writeFile.write(reinterpret_cast<const char*>(&size), sizeof(int));
+        writeFile.seekp((sizeof(StudentA)*position)+sizeof(int), ios::beg);
+        writeFile << record;
+        writeFile.close();
+    }
+    else if (mode == FREE_LIST) {
+        // FIFO
+        //LIFO
+    }
     return true;
 }
 #endif //FIXEDRECORD_H
